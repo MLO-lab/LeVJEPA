@@ -1,0 +1,156 @@
+# Default recipe: LeVJEPA ViT-B/16 on Walking Tours.
+#
+# Hyperparameters follow our large-scale ViT-L video-mixture pretraining runs:
+# tubelet 1, 95% token drop, 10 local crops, projector 256, SIGReg 0.02 on CLS,
+# and a flat learning rate after warmup with a constant weight decay.
+#
+# Effective batch = devices * num_nodes * batch_size * accumulate_grad_batches
+#                 = 8 * 2 * 96 * 2 = 3072 clips.
+# With clips_per_video=200 over the 6,067-episode 10-video store that is
+# ~395 optimizer steps/epoch, so 26 epochs ~= 10k optimizer steps.
+# If you change the world size, keep the effective batch at 3072 by adjusting
+# accumulate_grad_batches (e.g. 1 node x 8 GPUs -> accumulate_grad_batches=4).
+#
+# Because the schedule is flat after warmup (end_lr == lr), the total length is
+# a free parameter: raise trainer.max_epochs to train longer without changing
+# anything else, or stop at any point.
+
+defaults:
+  - data: walking_tours
+  - _self_
+
+# Temporal stride when sampling the 16-frame clip from the 15 fps store
+# (-> 7.5 fps, ~2.1 s per clip), matching the clip rate of the ViT-L runs.
+frame_stride: 2
+
+# spt.Module does manual optimization; see main.py (sets trainer.accumulate_grad_batches_)
+accumulate_grad_batches: 2
+
+loader:
+  batch_size: 96
+  num_workers: 12
+  persistent_workers: true
+  prefetch_factor: 2
+  pin_memory: true
+  # Clips drawn per video per epoch: gives a small dataset a usable epoch
+  # length; every clip is still an independent random temporal crop.
+  clips_per_video: 200
+  # Ship uint8 from the workers and normalize on the GPU: numerically
+  # identical, 4x less host RAM and shared-memory IPC. Required at 10 local
+  # crops, where float32 views would otherwise dominate worker memory.
+  normalize_on_gpu: true
+
+augmentation:
+  local_size: 96
+  local_crops_number: 10
+  local_crops_scale: [0.02, 0.4]
+  global_crops_scale: [0.8, 1.0]
+  hflip: true
+  color_jitter_prob: 0.8
+  grayscale_prob: 0.2
+  gaussian_blur_prob: 0.0
+  # DINO's 0.1. Setting 0 drops the hue term: ~3x cheaper transform, but hue
+  # jitter is what denies the encoder a colour-histogram shortcut.
+  color_jitter_hue: 0.1
+
+model:
+  name: vit_base  # vit_tiny .. vit_gigantic, see module.py
+  img_size: 224
+  patch_size: 16
+  num_frames: 16
+  # One token per frame (no temporal pooling at the patch embedding). Doubles
+  # the token count, which the token drop below more than pays back.
+  tubelet_size: 1
+  use_rope: true
+  # Fraction of patch tokens dropped in the encoder during training (0 = off).
+  # At 0.95 the 3136-token clip is encoded as ~157 tokens, so tubelet 1 still
+  # costs far less than an undropped tubelet-2 clip. Training only: evaluation
+  # and inference always see the full token set.
+  token_drop_rate: 0.95
+  token_drop_mode: random  # random, tube, or tube_k
+  token_drop_k: 2  # tube_k only: length (in temporal slots) of each kept tube
+  # full = every token sees every token. block_causal = bidirectional within a
+  # temporal slot, causal across slots; CLS reads the whole clip but no patch
+  # reads CLS, so no future information can leak backwards through it.
+  attn_mode: full
+
+projector:
+  hidden_dim: 2048
+  output_dim: 256
+
+optimizer:
+  type: AdamW
+  lr: 4e-4
+  weight_decay: 0.04
+  exclude_bias_norm: true
+  betas: [0.9, 0.95]
+
+scheduler:
+  name: LinearWarmupCosineAnnealing
+  interval: step
+  # ~12% of the default 10k-step run. Scale with the run length if you extend
+  # it (the ViT-L runs warm up over 12,000 steps of a far longer schedule).
+  peak_step: 1200
+  start_lr: 1e-4
+  end_lr: 4e-4  # end_lr == lr -> flat schedule after warmup (no decay)
+
+# Constant weight decay, as in the ViT-L runs. A cosine 0.04 -> 0.4 ramp is
+# available for a decaying-LR (WSD-style) schedule.
+weight_decay_scheduler:
+  enabled: false
+  schedule_type: cosine
+  start_value: 0.04
+  end_value: 0.4
+  param_group_indices: [0]
+
+ema:
+  enabled: true
+  decay: 0.9999
+  update_every: 32
+  start_step: 0
+  include: ["encoder"]
+  exclude: []
+  save_key: state_dict_ema  # checkpoints carry EMA weights under this key
+  device: cuda
+  dtype: float32
+
+loss:
+  sigreg:
+    weight: 0.02
+    kwargs:
+      knots: 17
+      num_proj: 1024
+      normalize_by_n: false
+
+wandb:
+  enabled: false  # set wandb.enabled=true (and your entity/project) to log
+  config:
+    project: le-vjepa
+    name: lejepa_vitb_walking_tours
+    log_model: false
+
+checkpoint:
+  dirpath: checkpoints  # relative to hydra's run dir (outputs/<date>/<time>/)
+  filename: epoch-{epoch:04d}
+  every_n_epochs: 0
+  every_n_train_steps: 2000
+  save_top_k: -1
+  save_last: true
+  auto_insert_metric_name: false
+
+resume:
+  ckpt_path: null  # path to a .ckpt; weights_only=true starts a fresh schedule
+  weights_only: true
+
+trainer:
+  max_epochs: 26
+  accelerator: gpu
+  devices: 8
+  num_nodes: 2
+  strategy: ddp
+  precision: bf16-mixed
+  num_sanity_val_steps: 0
+  limit_train_batches: 1.0
+  limit_val_batches: 0
+  log_every_n_steps: 10
+  enable_checkpointing: true

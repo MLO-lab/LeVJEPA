@@ -216,3 +216,14 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# --- LeVJEPA -----------------------------------------------------------------
+# Hydra / Lightning / wandb run artifacts
+outputs/
+logs/
+wandb/
+checkpoints/
+*.ckpt
+
+# Datasets are built locally, see README
+data/walking_tours/

@@ -1,0 +1,8 @@
+# Walking Tours has only a train split; val points at train and is disabled via
+# trainer.limit_val_batches=0 (SSL run, no held-out eval needed).
+#
+# Paths are resolved relative to the directory you launch from (hydra
+# to_absolute_path). Override the root with LEVJEPA_DATA_ROOT or pass
+# data.train=... on the command line.
+train: ${oc.env:LEVJEPA_DATA_ROOT,data}/walking_tours/train.lance
+val: ${oc.env:LEVJEPA_DATA_ROOT,data}/walking_tours/train.lance
