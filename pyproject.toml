@@ -24,6 +24,17 @@ data = [
     "decord>=0.6.0",
     "yt-dlp>=2026.7.4",
 ]
+# Only needed for the notebooks, not for training. Self-contained on any
+# platform (CUDA, Apple Silicon, CPU): yt-dlp resolves stream URLs and av
+# (PyAV, which bundles its own ffmpeg libraries) decodes video everywhere,
+# including where decord has no wheels.
+notebook = [
+    "transformers>=4.50.0",
+    "matplotlib>=3.9.0",
+    "jupyterlab>=4.2.0",
+    "yt-dlp>=2026.7.4",
+    "av>=13.0.0",
+]
 
 [[tool.uv.index]]
 name = "pytorch-cu128"

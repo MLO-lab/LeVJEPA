@@ -332,15 +332,14 @@ class Attention(nn.Module):
         q, k, v = qkv[0], qkv[1], qkv[2]
 
         if self.use_sdpa:
-            with torch.backends.cuda.sdp_kernel():
-                x = F.scaled_dot_product_attention(
-                    q,
-                    k,
-                    v,
-                    attn_mask=attn_mask,
-                    dropout_p=self.proj_drop_prob,
-                )
-                attn = None
+            x = F.scaled_dot_product_attention(
+                q,
+                k,
+                v,
+                attn_mask=attn_mask,
+                dropout_p=self.proj_drop_prob,
+            )
+            attn = None
         else:
             attn = (q @ k.transpose(-2, -1)) * self.scale
             if attn_mask is not None:
@@ -381,7 +380,7 @@ def rotate_queries_or_keys(x, pos):
     y = y.flatten(-2)
     return (x * emb_cos) + (y * emb_sin)
 
-# Yoinked from https://github.com/facebookresearch/vjepa2/blob/main/src/models/utils/modules.py
+# Adapted from https://github.com/facebookresearch/vjepa2/blob/main/src/models/utils/modules.py
 class RoPEAttention(nn.Module):
     def __init__(
         self,
@@ -506,15 +505,14 @@ class RoPEAttention(nn.Module):
             q, k = self._apply_rope(q, k, (d_mask, h_mask, w_mask))
 
         if self.use_sdpa:
-            with torch.backends.cuda.sdp_kernel():
-                x = F.scaled_dot_product_attention(
-                    q,
-                    k,
-                    v,
-                    attn_mask=attn_mask,
-                    dropout_p=self.proj_drop_prob,
-                )
-                attn = None
+            x = F.scaled_dot_product_attention(
+                q,
+                k,
+                v,
+                attn_mask=attn_mask,
+                dropout_p=self.proj_drop_prob,
+            )
+            attn = None
         else:
             attn = (q @ k.transpose(-2, -1)) * self.scale
             if attn_mask is not None:
@@ -669,8 +667,6 @@ class VisionTransformer(nn.Module):
         uniform_power=False,
         use_rope=False,
         token_drop_rate=0.0,
-        token_drop_mode="random",
-        token_drop_k=2,
         attn_mode="full",
         **kwargs,
     ):
@@ -679,8 +675,6 @@ class VisionTransformer(nn.Module):
         self.num_heads = num_heads
         self.out_layers = out_layers
         self.token_drop_rate = token_drop_rate
-        self.token_drop_mode = token_drop_mode
-        self.token_drop_k = int(token_drop_k)
         if attn_mode not in ("full", "block_causal"):
             raise ValueError(f"Unknown attn_mode {attn_mode!r}")
         self.attn_mode = attn_mode
@@ -834,52 +828,10 @@ class VisionTransformer(nn.Module):
         token_ids = None
         if self.training and self.token_drop_rate > 0:
             B, N_patches, C = x.shape
-            if self.token_drop_mode == "tube":
-                # Keep the same random spatial locations in every temporal slot.
-                HW = H_patches * W_patches
-                keep_s = max(1, int(round(HW * (1 - self.token_drop_rate))))
-                noise = torch.rand(B, HW, device=x.device)
-                spatial_ids = noise.argsort(dim=1)[:, :keep_s]
-                temporal_offsets = torch.arange(T, device=x.device) * HW
-                token_ids = (
-                    spatial_ids[:, None, :] + temporal_offsets[None, :, None]
-                ).reshape(B, T * keep_s)
-                token_ids, _ = token_ids.sort(dim=1)
-            elif self.token_drop_mode == "tube_k":
-                # Keep short tubes: a spatial location survives for k consecutive
-                # temporal slots. The temporal axis is cut into T//k aligned blocks
-                # of length k, and we sample whole (block, location) pairs, so every
-                # kept run is contiguous and runs never overlap. k=1 degenerates to
-                # `random`, k=T to `tube`.
-                HW = H_patches * W_patches
-                k = max(1, min(self.token_drop_k, T))
-                if T % k != 0:
-                    raise ValueError(
-                        f"token_drop_mode='tube_k' needs k to divide the temporal "
-                        f"grid, got k={k} and T={T} slots"
-                    )
-                n_blocks = T // k
-                keep_len = max(1, int(round(N_patches * (1 - self.token_drop_rate))))
-                # Same token budget as the other modes (hence same FLOPs), up to the
-                # <k/2 tokens lost to rounding keep_len onto a multiple of k.
-                n_seg = min(max(1, int(round(keep_len / k))), HW * n_blocks)
-                noise = torch.rand(B, HW * n_blocks, device=x.device)
-                seg_ids = noise.argsort(dim=1)[:, :n_seg]
-                block_ids, spatial_ids = seg_ids // HW, seg_ids % HW
-                offsets = torch.arange(k, device=x.device)
-                token_ids = (
-                    (block_ids[:, :, None] * k + offsets[None, None, :]) * HW
-                    + spatial_ids[:, :, None]
-                ).reshape(B, n_seg * k)
-                token_ids, _ = token_ids.sort(dim=1)
-            else:
-                # Draw an independent keep-set over the full temporal-spatial grid.
-                keep_len = max(
-                    1, int(round(N_patches * (1 - self.token_drop_rate)))
-                )
-                noise = torch.rand(B, N_patches, device=x.device)
-                token_ids = noise.argsort(dim=1)[:, :keep_len]
-
+            # Draw an independent keep-set over the full temporal-spatial grid.
+            keep_len = max(1, int(round(N_patches * (1 - self.token_drop_rate))))
+            noise = torch.rand(B, N_patches, device=x.device)
+            token_ids = noise.argsort(dim=1)[:, :keep_len]
             x = torch.gather(
                 x,
                 dim=1,
@@ -1074,7 +1026,7 @@ def vit_gigantic(patch_size=14, **kwargs):
         embed_dim=1664,
         depth=48,
         num_heads=16,
-        mpl_ratio=64 / 13,
+        mlp_ratio=64 / 13,
         qkv_bias=True,
         norm_layer=partial(nn.LayerNorm, eps=1e-6),
         **kwargs,

@@ -3,7 +3,7 @@
 Convention: 15 fps stored rate (per-video stride off the native fps), short
 edge 384, JPEG quality 90, consecutive non-overlapping 128-frame episodes
 (~8.5 s each). Training then samples 16-frame clips every `frame_stride`-th
-row (default stride 4 -> 3.75 fps, ~4.3 s per clip).
+row (config default stride 2 -> 7.5 fps, ~2.1 s per clip).
 
 The stride is derived per video rather than fixed, because the walks are not
 all the same frame rate: 9 are 60 fps but Wildlife is 30 fps. See `stride_for`.

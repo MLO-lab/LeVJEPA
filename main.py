@@ -34,8 +34,6 @@ def build_model(cfg: DictConfig):
         tubelet_size=cfg.model.tubelet_size,
         use_rope=cfg.model.get("use_rope", True),
         token_drop_rate=cfg.model.get("token_drop_rate", 0.0),
-        token_drop_mode=cfg.model.get("token_drop_mode", "random"),
-        token_drop_k=cfg.model.get("token_drop_k", 2),
         attn_mode=cfg.model.get("attn_mode", "full"),
     )
 

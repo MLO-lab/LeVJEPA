@@ -67,12 +67,10 @@ model:
   # costs far less than an undropped tubelet-2 clip. Training only: evaluation
   # and inference always see the full token set.
   token_drop_rate: 0.95
-  token_drop_mode: random  # random, tube, or tube_k
-  token_drop_k: 2  # tube_k only: length (in temporal slots) of each kept tube
   # full = every token sees every token. block_causal = bidirectional within a
   # temporal slot, causal across slots; CLS reads the whole clip but no patch
   # reads CLS, so no future information can leak backwards through it.
-  attn_mode: full
+  attn_mode: block_causal
 
 projector:
   hidden_dim: 2048

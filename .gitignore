@@ -227,3 +227,8 @@ checkpoints/
 
 # Datasets are built locally, see README
 data/walking_tours/
+
+# Notebook working files (downloaded samples, decoded-frame cache)
+notebooks/workshop_frames.pt
+notebooks/workshop_venice.mp4
+notebooks/sample_image.jpg
