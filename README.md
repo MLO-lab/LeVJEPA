@@ -137,11 +137,14 @@ To fine-tune or continue from a checkpoint with a fresh schedule, pass `resume.c
 ## Citation
 
 ```bibtex
-@article{kuhn2026levjepa,
-  title   = {LeVJEPA: Efficient \& Scalable Video Pretraining without the Heuristics},
-  author  = {Kuhn, Lukas and Maes, Lucas and Serra, Giuseppe and Le Lidec, Quentin
-             and LeCun, Yann and Balestriero, Randall and Buettner, Florian},
-  year    = {2026}
+@misc{kuhn2026levjepaefficientscalable,
+      title={LeVJEPA: Efficient & Scalable Video Pretraining without the Heuristics}, 
+      author={Lukas Kuhn and Lucas Maes and Giuseppe Serra and Quentin Le Lidec and Yann LeCun and Randall Balestriero and Florian Buettner},
+      year={2026},
+      eprint={2608.27395},
+      archivePrefix={arXiv},
+      primaryClass={cs.CV},
+      url={https://arxiv.org/abs/2608.27395}, 
 }
 ```
 
