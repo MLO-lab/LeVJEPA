@@ -4,9 +4,9 @@ Official implementation of **LeVJEPA**, the first video encoder trained under Le
 
 Lukas Kuhn, Lucas Maes, Giuseppe Serra, Quentin Le Lidec, Yann LeCun, Randall Balestriero, Florian Buettner
 
-[![arXiv](https://img.shields.io/badge/arXiv-2608.27395-b31b1b.svg)](https://arxiv.org/abs/2608.27395)
-[![Project Page](https://img.shields.io/badge/Project-Page-1f6feb.svg)](https://levjepa.github.io)
-[![Checkpoint on Hugging Face](https://huggingface.co/datasets/huggingface/badges/resolve/main/model-on-hf-sm.svg)](https://huggingface.co/galilai-group/LeVJEPA-VideoMix-Large)
+[![Paper on arXiv](assets/badge-arxiv.svg)](https://arxiv.org/abs/2608.27395)
+[![Project Page](assets/badge-project-page.svg)](https://levjepa.github.io)
+[![Model on Hugging Face](https://huggingface.co/datasets/huggingface/badges/resolve/main/model-on-hf-md.svg)](https://huggingface.co/galilai-group/LeVJEPA-VideoMix-Large)
 
 ## What is LeVJEPA?
 
