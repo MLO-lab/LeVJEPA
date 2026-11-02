@@ -1,0 +1,11 @@
+# Something-Something v2 (169k train / 24.7k val) with V-JEPA's 16x2x3 protocol (eval/datasets.py VideoProbeDataset):
+# 2 segments of 16 frames, 4 native frames apart, the probe attending across both; train is one augmented view, val 3
+# spatial views with the softmax averaged. The stores must hold every native frame (12 fps). short_side: 240 resizes
+# frames to the native SSv2 resolution if they were stored larger.
+# The video transforms come from a checkout of https://github.com/facebookresearch/jepa at jepa_root.
+num_classes: 174
+num_frames: 16
+weight_decay: 0.01
+jepa_root: /path/to/jepa
+train: {_target_: eval.datasets.VideoProbeDataset, path: data/ssv2/train.lance, train: true, jepa_root: "${benchmark.jepa_root}", step: 4, segments: 2, views: 3, short_side: 240}
+val: {_target_: eval.datasets.VideoProbeDataset, path: data/ssv2/val.lance, train: false, jepa_root: "${benchmark.jepa_root}", step: 4, segments: 2, views: 3, short_side: 240}

@@ -1,0 +1,7 @@
+# ImageNet-1k (1.28M train / 50k val) with V-JEPA's image protocol (eval/datasets.py ImageProbeDataset): each image is
+# one episode, repeated over num_frames frames.
+num_classes: 1000
+num_frames: 16
+weight_decay: 0.001
+train: {_target_: eval.datasets.ImageProbeDataset, path: data/imagenet/train.lance, train: true}
+val: {_target_: eval.datasets.ImageProbeDataset, path: data/imagenet/val.lance, train: false}

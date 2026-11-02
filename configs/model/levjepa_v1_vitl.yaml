@@ -1,0 +1,14 @@
+# LeVJEPA v1 ViT-L/16 (the paper's encoder, legacy/vision_transformer.py): one [cls] token over the clip, block-causal
+# attention, tubelet 1, RoPE. Matches the Hugging Face release, so it evaluates with
+#   python -m eval.eval model=levjepa_v1_vitl checkpoint=galilai-group/LeVJEPA-1.5-Large
+# `checkpoint` also takes a v1 Lightning .ckpt (its EMA copy unless ema=false). For a v1 ViT-B set name: vit_base,
+# residual_dim: 768.
+legacy: true
+name: vit_large
+residual_dim: 1024   # probe width
+img_size: 224
+patch_size: 16
+num_frames: 16
+tubelet_size: 1
+use_rope: true
+attn_mode: block_causal

@@ -1,0 +1,49 @@
+# Frozen-encoder attentive probe with V-JEPA's evaluation protocols (benchmark: in1k or ssv2).
+defaults:
+  - model: vitb
+  - benchmark: in1k
+  - _self_
+
+seed: 0
+compile: true
+checkpoint: null   # Lightning checkpoint from train.py; null probes a randomly initialised encoder
+ema: true   # for a checkpoint trained with an EMA: probe the EMA teacher; false probes the student
+
+probe:
+  num_heads: 16   # V-JEPA 2's AttentiveClassifier (eval/probe.py): 3 self-attention blocks, then one query cross-attending
+  frames: all   # probe the patch tokens of every frame, or of the last frame only
+
+data:
+  size: 224
+  batch_size: 64   # per GPU
+  num_workers: 10
+
+# V-JEPA 2's frozen-eval optimisation: AdamW, no warmup, per step a cosine lr -> 0 and a cosine weight decay ->
+# final_weight_decay; weight decay is set per benchmark.
+# lr: 3e-5 is the first choice. When affordable, search optimizer.lr=[3e-5,1e-4,3e-4,1e-3]: one probe per lr is trained
+# on the same encoded tokens, so the encoder still runs once per batch, and val/best_top1 is the best of them.
+optimizer:
+  lr: 3e-5
+  weight_decay: ${benchmark.weight_decay}
+  final_weight_decay: 1e-6
+gradient_clip_val: 1.0
+
+# Stop once no probe has improved val/top1 for `patience` epochs; null trains all max_epochs. The best epoch's val/top1
+# is logged as val/best_top1.
+early_stopping:
+  patience: 10
+
+trainer:
+  max_epochs: 50
+  accelerator: gpu
+  devices: 1
+  num_nodes: 1
+  strategy: ddp
+  precision: bf16-mixed
+  log_every_n_steps: 10
+
+wandb:
+  project: levjepa-eval
+  entity: null
+  name: null
+  mode: online

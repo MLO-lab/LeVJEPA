@@ -1,0 +1,5 @@
+# ViT-B: 768 dim, 12 layers, 12 heads (head_dim 64), ~86M parameters
+residual_dim: 768
+depth: 12
+num_heads: 12
+attention_window: 16   # frames a token attends back to (causal, sliding window)

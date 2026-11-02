@@ -1,0 +1,81 @@
+# ViT-B pretraining. Single store by default; `python train.py dataset=mixture` trains on configs/dataset/mixture.yaml.
+defaults:
+  - model: vitb
+  - dataset: single
+  - _self_
+
+seed: 0
+compile: true
+resume: null   # checkpoint to continue from with its full state (weights, EMA, optimizer, scheduler step)
+
+# Token dropping: the encoder only sees the fraction keep_* of each view's patch tokens per frame, rounded up to a whole
+# token. 0.05 keeps 10 of the 196 global (224px) and 2 of the 36 local (96px) tokens, i.e. drops ~95%.
+masking:
+  keep_global: 0.05
+  keep_local: 0.05
+  iid: true   # false: keep_* tokens in every frame; true: T * keep_* tokens drawn uniformly over the whole clip
+
+# One global and num_local local crops per clip, each shared by all of its frames.
+views:
+  num_local: 4
+  global_size: 224
+  local_size: 96
+  global_scale: [0.8, 1.0]
+  local_scale: [0.02, 0.4]
+
+loss:
+  lam: 0.06   # weight of SIGReg against the invariance term
+
+# EMA of the encoder, updated after every optimizer step (decay 0.9998 is a ~5k-step horizon). eval.py probes it by
+# default. null disables it; a run with an EMA cannot resume a checkpoint trained without one.
+ema: {decay: 0.9998}
+
+data:
+  batch_size: 64   # per GPU
+  probs: {16: 1.0}   # clip length (frames) -> probability; one length is drawn per batch
+  batches_per_epoch: 1000
+  num_workers: 16
+  height: 224
+  width: 224
+  persistent_workers: true
+
+# Optional holdout: `videos` episodes excluded from training, whose loss is logged as val/* every `every_n_steps`.
+holdout: null   # e.g. {videos: 1024, every_n_steps: 1000}
+
+projector: {hidden: 2048, out: 256}
+
+optimizer: {type: AdamW, lr: 4e-4, weight_decay: 0.04, betas: [0.9, 0.95], exclude_bias_norm: true}
+
+# Muon (https://kellerjordan.github.io/posts/muon/) orthogonalises the momentum of each 2-D weight matrix with a few
+# Newton-Schulz iterations before the update. When set, it takes the attention (qkv, proj) and MLP (gate, up, down)
+# matrices of the encoder blocks (train.py MUON_MODULES); all other parameters stay on the AdamW above, and both share
+# the scheduler. adjust_lr_fn: match_rms_adamw scales Muon's update to AdamW's RMS, so AdamW's lr and weight decay
+# carry over. Example:
+#   muon: {lr: 4e-4, weight_decay: 0.04, momentum: 0.95, nesterov: true, adjust_lr_fn: match_rms_adamw}
+muon: null
+
+# Warmup-stable-decay: linear warmup from start_factor * lr over peak_step steps, flat, then 1 - sqrt decay to 0 over
+# the last decay_epochs. stable-pretraining's schedulers (e.g. {type: LinearWarmupCosineAnnealing}) work as well.
+scheduler: {type: WSD, peak_step: 5000, start_factor: 0.25, decay_epochs: 10}
+interval: step
+gradient_clip_val: 1.0
+
+trainer:
+  max_epochs: 100
+  accelerator: gpu
+  devices: 1
+  num_nodes: 1
+  precision: bf16-mixed
+  use_distributed_sampler: false   # VariableLengthBatchSampler shards by rank itself
+  log_every_n_steps: 10
+
+checkpoint:
+  every_n_train_steps: 5000
+  save_last: true
+  save_top_k: -1
+
+wandb:
+  project: levjepa
+  entity: null
+  name: null
+  mode: online

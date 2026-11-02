@@ -1,0 +1,7 @@
+# Walking Tours (Venkataramanan et al., "Is ImageNet worth 1 video?", ICLR 2024): 10 hours-long first-person city walks,
+# unlabeled. Built by scripts/download_walking_tours.sh and scripts/build_lance_walking_tours.py at 15 fps in 128-frame
+# episodes; stride 2 samples clips at 7.5 fps. Data root: $LEVJEPA_DATA_ROOT, or data/ under the repository root.
+path: ${oc.env:LEVJEPA_DATA_ROOT,data}/walking_tours/train.lance
+episodes_path: ${oc.env:LEVJEPA_DATA_ROOT,data}/walking_tours/train.episodes.npz
+column: frame
+stride: 2

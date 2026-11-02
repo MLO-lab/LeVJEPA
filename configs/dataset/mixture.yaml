@@ -1,0 +1,17 @@
+# Several frame stores sampled as one dataset. Per source (see data.py Episodes):
+#   stride: rows skipped between two frames of a window, to bring every source to a similar frame rate
+#   pad:    keep episodes shorter than a window and repeat their last frame (images, short clips)
+#   weight: share of the samples drawn from this source; by default its episode count, so every video / image is
+#           about equally likely
+column: frame
+sources:
+  - path: data/kinetics/train.lance                 # stored at ~7.5 fps
+    episodes_path: data/kinetics/train.episodes.npz
+  - path: data/ssv2/train.lance                     # stored at native 12 fps, stride 4 gives 3 fps
+    episodes_path: data/ssv2/train.episodes.npz
+    stride: 4
+    pad: true
+  - path: data/imagenet/train.lance                 # one-frame episodes, repeated into static clips
+    episodes_path: data/imagenet/train.episodes.npz
+    pad: true
+    weight: 100000

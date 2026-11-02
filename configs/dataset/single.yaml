@@ -1,0 +1,6 @@
+# One lance frame store: one JPEG per row (column `frame`), rows of an episode (video) contiguous, with an `episode_idx`
+# column. Build the episode index once with:
+#   python scripts/build_episodes.py data/kinetics/train.lance
+path: data/kinetics/train.lance
+episodes_path: data/kinetics/train.episodes.npz
+column: frame
